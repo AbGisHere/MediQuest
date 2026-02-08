@@ -1,0 +1,301 @@
+{
+    "info": {
+        "name": "Universal Healthcare Backend API",
+        "description": "DigiLocker-style healthcare backend API collection",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:8000",
+            "type": "string"
+        },
+        {
+            "key": "accessToken",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "patientId",
+            "value": "",
+            "type": "string"
+        }
+    ],
+    "item": [
+        {
+            "name": "Authentication",
+            "item": [
+                {
+                    "name": "Register Doctor",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"username\": \"dr_smith\",\n  \"email\": \"smith@hospital.com\",\n  \"password\": \"SecurePass123!\",\n  \"role\": \"doctor\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/register"
+                        }
+                    }
+                },
+                {
+                    "name": "Login",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"username\": \"dr_smith\",\n  \"password\": \"SecurePass123!\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/login"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Patients",
+            "item": [
+                {
+                    "name": "Register Patient",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"date_of_birth\": \"1990-01-15\",\n  \"gender\": \"male\",\n  \"blood_group\": \"O+\",\n  \"email\": \"john.doe@email.com\",\n  \"phone\": \"+1234567890\",\n  \"country\": \"India\",\n  \"fingerprint_data\": \"sample_fingerprint_data_base64\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/patients/register"
+                        }
+                    }
+                },
+                {
+                    "name": "Get Patient",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/patients/{{patientId}}"
+                        }
+                    }
+                },
+                {
+                    "name": "Verify Biometric",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"fingerprint_data\": \"sample_fingerprint_data_base64\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/patients/verify-biometric"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Vitals",
+            "item": [
+                {
+                    "name": "Upload Single Vital",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"patient_id\": \"{{patientId}}\",\n  \"vital_type\": \"glucose\",\n  \"value\": 120.5,\n  \"unit\": \"mg/dL\",\n  \"source\": \"device\",\n  \"recorded_at\": \"2026-02-08T10:00:00Z\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/vitals/"
+                        }
+                    }
+                },
+                {
+                    "name": "Batch Upload Vitals",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"batch_id\": \"batch_001\",\n  \"vitals\": [\n    {\n      \"patient_id\": \"{{patientId}}\",\n      \"vital_type\": \"heart_rate\",\n      \"value\": 75,\n      \"unit\": \"bpm\",\n      \"source\": \"wearable\",\n      \"recorded_at\": \"2026-02-08T09:00:00Z\"\n    },\n    {\n      \"patient_id\": \"{{patientId}}\",\n      \"vital_type\": \"spo2\",\n      \"value\": 98,\n      \"unit\": \"%\",\n      \"source\": \"wearable\",\n      \"recorded_at\": \"2026-02-08T09:00:00Z\"\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/vitals/batch"
+                        }
+                    }
+                },
+                {
+                    "name": "Get Patient Vitals",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/vitals/{{patientId}}"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Health Profile",
+            "item": [
+                {
+                    "name": "Get Unified Health Profile",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/health-profile/{{patientId}}"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Consent",
+            "item": [
+                {
+                    "name": "Grant Consent",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"patient_id\": \"{{patientId}}\",\n  \"purpose\": \"treatment\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/consent/grant"
+                        }
+                    }
+                },
+                {
+                    "name": "Check Consent",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/consent/{{patientId}}/check/treatment"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Emergency",
+            "item": [
+                {
+                    "name": "Trigger Emergency Access",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"patient_id\": \"{{patientId}}\",\n  \"trigger_reason\": \"Patient unconscious, immediate medical attention required\",\n  \"trigger_keyword\": \"emergency\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/emergency/trigger"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Health Check",
+            "request": {
+                "method": "GET",
+                "url": {
+                    "raw": "{{baseUrl}}/health"
+                }
+            }
+        }
+    ]
+}
