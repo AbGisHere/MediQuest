@@ -30,3 +30,11 @@ ENV/
 *.swp
 *.swo
 .DS_Store
+
+# Databases
+*.db
+*.sqlite3
+
+# Type checking
+.mypy_cache/
+
