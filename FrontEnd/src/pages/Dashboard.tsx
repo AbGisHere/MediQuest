@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import Layout from '../components/Layout';
 import { Heart, Activity, Users, AlertTriangle, TrendingUp, Calendar } from 'lucide-react';
 import apiService from '../services/api';
 import type { Vital, Alert } from '../types';
@@ -93,17 +92,14 @@ const Dashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-        </div>
-      </Layout>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
@@ -247,7 +243,6 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
-    </Layout>
   );
 };
 

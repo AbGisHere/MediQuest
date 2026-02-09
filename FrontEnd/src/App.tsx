@@ -6,6 +6,13 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import Dashboard from './pages/Dashboard';
 import PatientsPage from './pages/PatientsPage';
+import PatientDetailsPage from './pages/PatientDetailsPage';
+import VitalsPage from './pages/VitalsPage';
+import ReportsPage from './pages/ReportsPage';
+import SettingsPage from './pages/SettingsPage';
+import MyVitalsPage from './pages/MyVitalsPage';
+import ProfilePage from './pages/ProfilePage';
+import ConsentPage from './pages/ConsentPage';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -75,6 +82,76 @@ const AppRoutes: React.FC = () => {
           <ProtectedRoute>
             <Layout>
               <PatientsPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/patients/:patientId"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <PatientDetailsPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/vitals"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <VitalsPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ReportsPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <SettingsPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/my-vitals"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <MyVitalsPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ProfilePage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/consent"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ConsentPage />
             </Layout>
           </ProtectedRoute>
         }

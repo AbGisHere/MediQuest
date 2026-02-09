@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import Layout from '../components/Layout';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Search, User, Phone, Mail } from 'lucide-react';
 import apiService from '../services/api';
 import type { Patient } from '../types';
 
 const PatientsPage: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,19 +37,21 @@ const PatientsPage: React.FC = () => {
     patient.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleViewDetails = (patientId: string) => {
+    navigate(`/patients/${patientId}`);
+  };
+
   if (user?.role === 'patient') {
     return (
-      <Layout>
-        <div className="text-center py-12">
-          <h2 className="text-2xl font-bold text-gray-900">Access Denied</h2>
-          <p className="mt-2 text-gray-600">Patients cannot view other patients' information.</p>
-        </div>
-      </Layout>
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold text-gray-900">Access Denied</h2>
+        <p className="mt-2 text-gray-600">Patients cannot view other patients' information.</p>
+      </div>
     );
   }
 
   return (
-    <Layout>
+    <>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
@@ -176,7 +179,10 @@ const PatientsPage: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button className="text-primary-600 hover:text-primary-900 mr-3">
+                        <button 
+                          onClick={() => handleViewDetails(patient.id)}
+                          className="text-primary-600 hover:text-primary-900 mr-3"
+                        >
                           View Details
                         </button>
                         <button className="text-gray-600 hover:text-gray-900">
@@ -192,33 +198,30 @@ const PatientsPage: React.FC = () => {
         </div>
       </div>
 
-
       {/* Add Patient Modal Placeholder */}
-      {
-        showAddForm && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
-              <h2 className="text-xl font-bold mb-4 text-gray-900">Add Patient</h2>
-              <p className="text-gray-600 mb-6">Patient registration form will be implemented here.</p>
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowAddForm(false)}
-                  className="btn btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => setShowAddForm(false)}
-                >
-                  Save (Demo)
-                </button>
-              </div>
+      {showAddForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
+            <h2 className="text-xl font-bold mb-4 text-gray-900">Add Patient</h2>
+            <p className="text-gray-600 mb-6">Patient registration form will be implemented here.</p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowAddForm(false)}
+                className="btn btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => setShowAddForm(false)}
+              >
+                Save (Demo)
+              </button>
             </div>
           </div>
-        )
-      }
-    </Layout >
+        </div>
+      )}
+    </>
   );
 };
 

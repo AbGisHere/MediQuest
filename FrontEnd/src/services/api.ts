@@ -128,6 +128,16 @@ class ApiService {
     return response.data;
   }
 
+  async getPatientById(patientId: string) {
+    const response = await this.api.get(API_ENDPOINTS.PATIENTS.DETAIL(patientId));
+    return response.data;
+  }
+
+  async getPatientAlerts(patientId: string) {
+    const response = await this.api.get(`/patients/${patientId}/alerts`);
+    return response.data;
+  }
+
   async registerPatient(data: any) {
     const response = await this.api.post(
       API_ENDPOINTS.PATIENTS.REGISTER,
