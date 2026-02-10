@@ -40,6 +40,18 @@ class Settings(BaseSettings):
     # Encryption
     ENCRYPTION_KEY: str
     
+    # Biometric Security
+    BIOMETRIC_SECRET_KEY: str = "default-biometric-key-change-in-production-min-32-chars"
+    
+    # Role-Based Encryption Keys (for clinical notes)
+    DOCTOR_ENCRYPTION_KEY: str = "default-doctor-encryption-key-change-in-production-min-32-chars"
+    PATIENT_ENCRYPTION_KEY: str = "default-patient-encryption-key-change-in-production-min-32-chars"
+    ADMIN_ENCRYPTION_KEY: str = "default-admin-encryption-key-change-in-production-min-32-chars"
+    
+    # File Upload Configuration
+    UPLOAD_DIR: str = "./uploads/blood_reports"
+    MAX_UPLOAD_SIZE_MB: int = 10
+    
     class Config:
         env_file = ".env"
         case_sensitive = False

@@ -14,15 +14,20 @@ const MyVitalsPage: React.FC = () => {
     const fetchMyVitals = async () => {
       try {
         setLoading(true);
-        // For patients, show their own vitals
+        // For patients, show their own vitals (for demo, use first available patient)
         if (user?.role === 'patient') {
-          const vitalsData = await apiService.getPatientVitals('aa7e877b-10cd-442b-bd38-b622cecb9629', undefined, 20);
-          setVitals(vitalsData);
+          // Get patients and use first one for demo
+          const patients = await apiService.getPatientsWithConsent(0, 10);
+          if (patients.length > 0) {
+            const vitalsData = await apiService.getPatientVitals(patients[0].id, undefined, 20);
+            setVitals(vitalsData);
+          }
         } else {
           setVitals([]);
         }
       } catch (error) {
         console.error('Error fetching vitals:', error);
+        setVitals([]);
       } finally {
         setLoading(false);
       }
@@ -33,9 +38,16 @@ const MyVitalsPage: React.FC = () => {
 
   const handleAddVital = async (vitalData: any) => {
     try {
+      // Get first patient for demo
+      const patients = await apiService.getPatientsWithConsent(0, 10);
+      if (patients.length === 0) {
+        alert('No patients available');
+        return;
+      }
+      
       const newVital = await apiService.uploadVital({
         ...vitalData,
-        patient_id: 'aa7e877b-10cd-442b-bd38-b622cecb9629',
+        patient_id: patients[0].id,
         recorded_at: new Date().toISOString(),
         source: 'manual'
       });

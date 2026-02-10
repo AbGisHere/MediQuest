@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import PatientsPage from './pages/PatientsPage';
 import PatientDetailsPage from './pages/PatientDetailsPage';
 import VitalsPage from './pages/VitalsPage';
+import BloodReportsPage from './pages/BloodReportsPage';
 import ReportsPage from './pages/ReportsPage';
 import SettingsPage from './pages/SettingsPage';
 import MyVitalsPage from './pages/MyVitalsPage';
@@ -102,6 +103,16 @@ const AppRoutes: React.FC = () => {
           <ProtectedRoute>
             <Layout>
               <VitalsPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/blood-reports"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <BloodReportsPage />
             </Layout>
           </ProtectedRoute>
         }

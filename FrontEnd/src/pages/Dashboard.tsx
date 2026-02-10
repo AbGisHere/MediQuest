@@ -23,25 +23,28 @@ const Dashboard: React.FC = () => {
 
         if (user?.role !== 'patient') {
           // Fetch data for doctors/admins
-          const [patients, vitals, alerts] = await Promise.all([
-            apiService.getPatientsWithConsent(0, 10), // Use consent-filtered patients
-            apiService.getPatientVitals('aa7e877b-10cd-442b-bd38-b622cecb9629', undefined, 5), // Use a real patient ID
-            apiService.getActiveEmergencyOverrides(),
-          ]);
+          const patients = await apiService.getPatientsWithConsent(0, 10);
+          
+          // Get vitals for first patient if available, otherwise empty array
+          const vitals = patients.length > 0 
+            ? apiService.getPatientVitals(patients[0].id, undefined, 5)
+            : Promise.resolve([]);
+            
+          const alerts = await apiService.getActiveEmergencyOverrides();
 
           setActiveAlerts(alerts);
-
+          setRecentVitals(await vitals); // Set recent vitals for display
 
           setStats({
             totalPatients: patients.length || 0,
-            totalVitals: vitals.length || 0,
+            totalVitals: (await vitals).length || 0,
             activeAlerts: alerts.length || 0,
             recentActivity: 0, // Would come from audit logs
           });
         } else {
-          // Fetch patient-specific data - use first patient as example
-          const vitals = await apiService.getPatientVitals('aa7e877b-10cd-442b-bd38-b622cecb9629', undefined, 5);
-          setRecentVitals(vitals);
+          // For patients, we would need their actual patient ID from auth context
+          // For now, skip patient-specific vitals
+          setRecentVitals([]);
         }
       } catch (error: any) {
         console.error('Error fetching dashboard data:', error);
@@ -51,6 +54,15 @@ const Dashboard: React.FC = () => {
           statusText: error.response?.statusText,
           data: error.response?.data
         });
+        // Set default values on error
+        setStats({
+          totalPatients: 0,
+          totalVitals: 0,
+          activeAlerts: 0,
+          recentActivity: 0,
+        });
+        setActiveAlerts([]);
+        setRecentVitals([]);
       } finally {
         setLoading(false);
       }

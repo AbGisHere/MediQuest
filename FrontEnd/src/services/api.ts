@@ -260,9 +260,47 @@ class ApiService {
     return response.data;
   }
 
+  // Blood Reports methods
+  async getPatientBloodReports(patientId: string) {
+    const response = await this.api.get(API_ENDPOINTS.BLOOD_REPORTS.LIST(patientId));
+    return response.data;
+  }
+
+  async getBloodReport(reportId: string) {
+    const response = await this.api.get(API_ENDPOINTS.BLOOD_REPORTS.DETAIL(reportId));
+    return response.data;
+  }
+
+  async uploadBloodReport(patientId: string, file: File, testDate?: string, labName?: string) {
+    const formData = new FormData();
+    formData.append('patient_id', patientId);
+    formData.append('file', file);
+    if (testDate) formData.append('test_date', testDate);
+    if (labName) formData.append('lab_name', labName);
+
+    const response = await this.api.post(API_ENDPOINTS.BLOOD_REPORTS.UPLOAD, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  }
+
+  async downloadBloodReport(reportId: string) {
+    const response = await this.api.get(API_ENDPOINTS.BLOOD_REPORTS.DOWNLOAD(reportId), {
+      responseType: 'blob',
+    });
+    return response.data;
+  }
+
+  async deleteBloodReport(reportId: string) {
+    const response = await this.api.delete(API_ENDPOINTS.BLOOD_REPORTS.DELETE(reportId));
+    return response.data;
+  }
+
   // System health check
   async healthCheck() {
-    const response = await this.api.get(API_ENDPOINTS.SYSTEM.HEALTH);
+    const response = await this.api.get(API_ENDPOINTS.HEALTH);
     return response.data;
   }
 

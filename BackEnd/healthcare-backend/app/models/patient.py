@@ -7,6 +7,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.database import Base
 import uuid
+import enum
 
 
 class Patient(Base):
@@ -58,25 +59,39 @@ class Patient(Base):
         return f"<Patient {self.id} - {self.first_name} {self.last_name}>"
 
 
+class BiometricType(str, enum.Enum):
+    """Types of biometric authentication."""
+    FINGERPRINT = "fingerprint"
+    FACE = "face"
+
+
 class BiometricHash(Base):
     """
-    Stores hashed biometric data (fingerprint).
-    One fingerprint hash maps to one patient UID.
-    No raw biometric data is stored.
+    Stores hashed biometric data (fingerprint or face).
+    One patient can have multiple biometric types (1 fingerprint + 1 face).
+    No raw biometric data is stored - only salted & keyed hashes (HMAC-SHA256/Argon2).
+    Biometrics are OPTIONAL - if one is missing, system still works.
     """
     __tablename__ = "biometric_hashes"
     
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    patient_id = Column(String(36), ForeignKey("patients.id"), nullable=False, unique=True, index=True)
-    fingerprint_hash = Column(String(64), nullable=False, unique=True, index=True)  # SHA-256 hash
-    hash_algorithm = Column(String(20), default="SHA256", nullable=False)
+    patient_id = Column(String(36), ForeignKey("patients.id"), nullable=False, index=True)
+    
+    # Biometric type and hash
+    biometric_type = Column(String(20), nullable=False)  # "fingerprint" or "face"
+    biometric_hash = Column(String(128), nullable=False, unique=True, index=True)  # HMAC-SHA256 or Argon2 hash
+    hash_algorithm = Column(String(20), default="HMAC-SHA256", nullable=False)
+    
+    # Status
+    is_active = Column(Boolean, default=True, nullable=False)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     
     # Relationship
-    patient = relationship("Patient", backref="biometric")
+    patient = relationship("Patient", backref="biometrics")
     
     def __repr__(self):
-        return f"<BiometricHash for patient {self.patient_id}>"
+        return f"<BiometricHash {self.biometric_type} for patient {self.patient_id}>"
+

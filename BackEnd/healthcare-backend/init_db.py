@@ -126,29 +126,53 @@ def seed_data():
         db.commit()
         print(f"   ✅ Created 3 patients")
         
-        # 3. Create biometric hashes for patients
+        # 3. Create biometric hashes for patients (fingerprint + face)
         print("\n3. Creating biometric identities...")
         
-        bio1 = BiometricHash(
+        from app.services.biometric import hash_face
+        from app.models.patient import BiometricType
+        
+        # Patient 1 - Fingerprint only
+        bio1_fp = BiometricHash(
             patient_id=patient1.id,
-            fingerprint_hash=hash_fingerprint(f"fingerprint_{patient1.id}")
+            biometric_type=BiometricType.FINGERPRINT.value,
+            biometric_hash=hash_fingerprint(f"fingerprint_{patient1.id}"),
+            hash_algorithm="HMAC-SHA256",
+            is_active=True
         )
-        db.add(bio1)
+        db.add(bio1_fp)
         
-        bio2 = BiometricHash(
+        # Patient 2 - Both fingerprint and face
+        bio2_fp = BiometricHash(
             patient_id=patient2.id,
-            fingerprint_hash=hash_fingerprint(f"fingerprint_{patient2.id}")
+            biometric_type=BiometricType.FINGERPRINT.value,
+            biometric_hash=hash_fingerprint(f"fingerprint_{patient2.id}"),
+            hash_algorithm="HMAC-SHA256",
+            is_active=True
         )
-        db.add(bio2)
+        db.add(bio2_fp)
         
-        bio3 = BiometricHash(
-            patient_id=patient3.id,
-            fingerprint_hash=hash_fingerprint(f"fingerprint_{patient3.id}")
+        bio2_face = BiometricHash(
+            patient_id=patient2.id,
+            biometric_type=BiometricType.FACE.value,
+            biometric_hash=hash_face(f"face_{patient2.id}"),
+            hash_algorithm="HMAC-SHA256",
+            is_active=True
         )
-        db.add(bio3)
+        db.add(bio2_face)
+        
+        # Patient 3 - Fingerprint only
+        bio3_fp = BiometricHash(
+            patient_id=patient3.id,
+            biometric_type=BiometricType.FINGERPRINT.value,
+            biometric_hash=hash_fingerprint(f"fingerprint_{patient3.id}"),
+            hash_algorithm="HMAC-SHA256",
+            is_active=True
+        )
+        db.add(bio3_fp)
         
         db.commit()
-        print(f"   ✅ Created 3 biometric hashes")
+        print(f"   ✅ Created 4 biometric hashes (3 fingerprints, 1 face)")
         
         # 4. Grant consents
         print("\n4. Creating consent records...")
@@ -295,8 +319,71 @@ def seed_data():
         db.commit()
         print(f"   ✅ Created {vitals_count} vital records")
         
-        # 8. Generate alerts based on vitals
-        print("\n8. Generating alerts for critical vitals...")
+        # 8. Add sample medical tests (RDTs & diagnostic tests)
+        print("\n8. Creating sample medical tests...")
+        from app.models.medical_test import MedicalTest
+        
+        tests_count = 0
+        
+        # Patient 1 - Negative malaria test
+        test1 = MedicalTest(
+            patient_id=patient1.id,
+            test_type="malaria_rdt",
+            result="negative",
+            source="device",
+            source_id=doctor.id,
+            performed_at=now - timedelta(days=2),
+            uploaded_by=doctor.id
+        )
+        db.add(test1)
+        tests_count += 1
+        
+        # Patient 2 - Multiple tests
+        test2 = MedicalTest(
+            patient_id=patient2.id,
+            test_type="dengue_ns1",
+            result="negative",
+            source="lab",
+            source_id=doctor.id,
+            performed_at=now - timedelta(days=1),
+            uploaded_by=doctor.id
+        )
+        db.add(test2)
+        tests_count += 1
+        
+        test3 = MedicalTest(
+            patient_id=patient2.id,
+            test_type="hiv_1_2",
+            result="negative",
+            source="lab",
+            source_id=doctor.id,
+            performed_at=now - timedelta(days=3),
+            uploaded_by=doctor.id
+        )
+        db.add(test3)
+        tests_count += 1
+        
+        # Patient 3 - CRP test (numeric result)
+        test4 = MedicalTest(
+            patient_id=patient3.id,
+            test_type="crp_latex",
+            result="numeric",
+            numeric_value=18.5,
+            unit="mg/L",
+            source="lab",
+            source_id=doctor2.id,
+            performed_at=now - timedelta(days=1),
+            uploaded_by=doctor2.id,
+            notes="Elevated CRP indicating inflammation"
+        )
+        db.add(test4)
+        tests_count += 1
+        
+        db.commit()
+        print(f"   ✅ Created {tests_count} medical test records")
+        
+        # 9. Generate alerts based on vitals
+        print("\n9. Generating alerts for critical vitals...")
         from app.services.alerts import AlertEngine
         
         # Get critical vitals
@@ -321,14 +408,15 @@ def seed_data():
         print(f"   - Username: dr_smith, Password: Doctor@123")
         print(f"   - Username: dr_jones, Password: Doctor@123")
         print(f"\n🏥 Patients: 3")
-        print(f"   - John Doe (healthy)")
-        print(f"   - Sarah Johnson (low oxygen reading)")
-        print(f"   - Michael Williams (diabetic with critical glucose)")
-        print(f"\n🔐 Biometric Hashes: 3")
+        print(f"   - John Doe (healthy) - Fingerprint only")
+        print(f"   - Sarah Johnson (low oxygen) - Fingerprint + Face")
+        print(f"   - Michael Williams (diabetic) - Fingerprint only")
+        print(f"\n🔐 Biometric Hashes: 4 (3 fingerprints, 1 face)")
         print(f"📜 Consents: 3")
         print(f"🩺 Health Conditions: 2")
         print(f"⚠️  Allergies: 2")
         print(f"📊 Vitals: {vitals_count}")
+        print(f"🧪 Medical Tests: {tests_count}")
         print(f"🚨 Alerts: {alerts_count}")
         print("="*60)
         

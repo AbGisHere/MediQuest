@@ -19,26 +19,17 @@ const ConsentPage: React.FC = () => {
           setConsents(consentData);
         } else if (user?.role === 'doctor') {
           // Doctors see consents they've granted to patients
-          const sampleConsents = [
-            {
-              id: '1',
-              patient_name: 'John Doe',
-              patient_id: 'aa7e877b-10cd-442b-bd38-b622cecb9629',
-              purpose: 'Treatment',
-              granted_at: '2026-02-01T10:00:00Z',
-              status: 'active',
-              expires_at: '2026-12-31T23:59:59Z'
-            },
-            {
-              id: '2',
-              patient_name: 'Jane Smith',
-              patient_id: 'faff2b22-170b-428e-ba2e-4b7afcf1509d',
-              purpose: 'Research',
-              granted_at: '2026-01-15T14:30:00Z',
-              status: 'active',
-              expires_at: '2026-06-30T23:59:59Z'
-            }
-          ];
+          // Get real patients and create sample consents
+          const patients = await apiService.getPatientsWithConsent(0, 10);
+          const sampleConsents = patients.slice(0, 2).map((patient, index) => ({
+            id: (index + 1).toString(),
+            patient_name: `${patient.first_name} ${patient.last_name}`,
+            patient_id: patient.id,
+            purpose: index === 0 ? 'Treatment' : 'Research',
+            granted_at: '2026-02-01T10:00:00Z',
+            status: 'active',
+            expires_at: '2026-12-31T23:59:59Z'
+          }));
           setConsents(sampleConsents);
         } else {
           setConsents([]);

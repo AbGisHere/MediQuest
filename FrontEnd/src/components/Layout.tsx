@@ -14,6 +14,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Dashboard', href: '/dashboard', icon: Heart },
     { name: 'Vitals', href: '/vitals', icon: Activity },
     { name: 'Patients', href: '/patients', icon: Users },
+    { name: 'Blood Reports', href: '/blood-reports', icon: FileText },
     { name: 'Reports', href: '/reports', icon: FileText },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];

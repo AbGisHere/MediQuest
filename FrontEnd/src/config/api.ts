@@ -47,6 +47,15 @@ export const API_ENDPOINTS = {
     UPDATE: (patientId: string) => `${API_BASE_URL}/health-profile/${patientId}`,
   },
   
+  // Blood Reports
+  BLOOD_REPORTS: {
+    UPLOAD: `${API_BASE_URL}/blood-reports/upload`,
+    LIST: (patientId: string) => `${API_BASE_URL}/blood-reports/patient/${patientId}`,
+    DETAIL: (reportId: string) => `${API_BASE_URL}/blood-reports/${reportId}`,
+    DOWNLOAD: (reportId: string) => `${API_BASE_URL}/blood-reports/${reportId}/pdf`,
+    DELETE: (reportId: string) => `${API_BASE_URL}/blood-reports/${reportId}`,
+  },
+  
   // System
   HEALTH: `${API_BASE_URL}/health`,
 } as const;

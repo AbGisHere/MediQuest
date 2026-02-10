@@ -9,6 +9,7 @@ from app.models.consent import ConsentPurpose
 from app.models.vitals import VitalSource, VitalType
 from app.models.alert import AlertSeverity, AlertType
 from app.models.device import DeviceType
+from app.models.medical_test import TestType, TestResult, TestSource
 
 
 # ============== Authentication Schemas ==============
@@ -60,7 +61,8 @@ class PatientRegister(BaseModel):
     emergency_contact_name: Optional[str] = None
     emergency_contact_phone: Optional[str] = None
     emergency_contact_relationship: Optional[str] = None
-    fingerprint_data: str  # Raw fingerprint data (will be hashed)
+    fingerprint_data: Optional[str] = None  # Raw fingerprint data (will be hashed) - OPTIONAL
+    face_data: Optional[str] = None  # Raw face data (will be hashed) - OPTIONAL
 
 
 class PatientResponse(BaseModel):
@@ -82,8 +84,16 @@ class PatientResponse(BaseModel):
 
 
 class BiometricVerify(BaseModel):
-    """Biometric verification request."""
-    fingerprint_data: str
+    """Biometric verification request - supports both fingerprint and face."""
+    fingerprint_data: Optional[str] = None  # At least one must be provided
+    face_data: Optional[str] = None  # At least one must be provided
+    
+    @validator('face_data')
+    def check_at_least_one_biometric(cls, v, values):
+        """Ensure at least one biometric is provided."""
+        if not v and not values.get('fingerprint_data'):
+            raise ValueError('At least one biometric (fingerprint or face) must be provided')
+        return v
 
 
 # ============== Consent Schemas ==============
@@ -243,10 +253,11 @@ class DeviceResponse(BaseModel):
 
 
 class DeviceIngest(BaseModel):
-    """Device data ingestion request."""
+    """Device data ingestion request - FAULT TOLERANT."""
     device_id: str
     api_key: str
-    vitals: List[VitalCreate]
+    vitals: Optional[List[VitalCreate]] = []  # OPTIONAL - missing vitals OK
+    medical_tests: Optional[List['MedicalTestCreate']] = []  # OPTIONAL - missing tests OK
 
 
 # ============== Emergency Schemas ==============
@@ -287,3 +298,207 @@ class AuditLogResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+# ============== Medical Test Schemas ==============
+
+class MedicalTestCreate(BaseModel):
+    """Create medical test request."""
+    patient_id: str
+    test_type: str  # malaria_rdt, dengue_ns1, hiv_1_2, etc.
+    result: str  # positive/negative/inconclusive/numeric
+    numeric_value: Optional[float] = None  # For numeric results (e.g., CRP levels)
+    unit: Optional[str] = None  # Unit if numeric
+    source: str = "device"  # doctor/device/manual/lab
+    source_id: Optional[str] = None
+    performed_at: datetime
+    notes: Optional[str] = None
+
+
+class MedicalTestBatchCreate(BaseModel):
+    """Batch create medical tests request."""
+    tests: List[MedicalTestCreate]
+    batch_id: Optional[str] = None
+
+
+class MedicalTestResponse(BaseModel):
+    """Medical test response."""
+    id: str
+    patient_id: str
+    test_type: str
+    result: str
+    numeric_value: Optional[float]
+    unit: Optional[str]
+    source: str
+    performed_at: datetime
+    uploaded_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+# ============== Expanded Device Ingestion (Fault-Tolerant) ==============
+
+class FaultTolerantDeviceIngest(BaseModel):
+    """
+    Fault-tolerant device ingestion - accepts partial payloads.
+    CRITICAL: Backend must NOT crash if any metric is missing.
+    All vitals and tests are OPTIONAL.
+    """
+    device_id: str
+    api_key: str
+    patient_id: str  # Required for consent checking
+    
+    # All vitals are OPTIONAL - missing data is OK
+    heart_rate: Optional[float] = None
+    bp_systolic: Optional[float] = None
+    bp_diastolic: Optional[float] = None
+    spo2: Optional[float] = None
+    temperature: Optional[float] = None
+    glucose: Optional[float] = None
+    weight: Optional[float] = None
+    height: Optional[float] = None
+    bmi: Optional[float] = None
+    respiratory_rate: Optional[float] = None
+    ecg: Optional[str] = None  # ECG data as string/JSON
+    steps: Optional[int] = None
+    sleep_hours: Optional[float] = None
+    calories: Optional[float] = None
+    
+    # Medical tests are OPTIONAL
+    medical_tests: Optional[List[MedicalTestCreate]] = []
+    
+    # Metadata
+    recorded_at: Optional[datetime] = None  # OPTIONAL - will use current time if missing
+    batch_id: Optional[str] = None
+
+
+# ============== Clinical Notes Schemas ==============
+
+class ClinicalNoteCreate(BaseModel):
+    """Create a new clinical note."""
+    patient_id: str
+    content: str = Field(..., min_length=1, max_length=10000)
+    category: str = "general"  # Will be validated as NoteCategory
+    is_sensitive: bool = False
+
+
+class ClinicalNoteUpdate(BaseModel):
+    """Update an existing note (admin only)."""
+    content: Optional[str] = Field(None, min_length=1, max_length=10000)
+    category: Optional[str] = None
+    is_sensitive: Optional[bool] = None
+
+
+class ClinicalNoteResponse(BaseModel):
+    """Clinical note response."""
+    id: str
+    patient_id: str
+    author_id: str
+    author_name: Optional[str] = None
+    content: str  # Decrypted content
+    category: str
+    is_sensitive: bool
+    encryption_role: str
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+# ============== Blood Report Schemas ==============
+
+class BloodReportResponse(BaseModel):
+    """Blood report response."""
+    id: str
+    patient_id: str
+    uploaded_by: str
+    uploader_name: Optional[str] = None
+    report_type: str
+    test_date: Optional[date] = None
+    lab_name: Optional[str] = None
+    hemoglobin: Optional[float] = None
+    wbc_count: Optional[float] = None
+    rbc_count: Optional[float] = None
+    platelet_count: Optional[float] = None
+    glucose_fasting: Optional[float] = None
+    glucose_random: Optional[float] = None
+    cholesterol_total: Optional[float] = None
+    cholesterol_hdl: Optional[float] = None
+    cholesterol_ldl: Optional[float] = None
+    triglycerides: Optional[float] = None
+    sgot: Optional[float] = None
+    sgpt: Optional[float] = None
+    creatinine: Optional[float] = None
+    urea: Optional[float] = None
+    parsing_confidence: Optional[float] = None
+    uploaded_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class BloodReportSummary(BaseModel):
+    """Summary view of a blood report."""
+    id: str
+    patient_id: str
+    report_type: str
+    test_date: Optional[date] = None
+    parsing_confidence: Optional[float] = None
+    uploaded_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+# ============== Emergency Trigger Detection Schemas ==============
+
+class EmergencyTriggerInput(BaseModel):
+    """Input for emergency trigger detection."""
+    input_text: str  # Voice-to-text or text input
+    patient_identifier: Optional[str] = None  # Optional patient ID/phone/name
+    location: Optional[str] = None  # GPS coordinates or location description
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "input_text": "Emergency! Patient collapsed. Need immediate help.",
+                "patient_identifier": "patient-uuid-or-phone",
+                "location": "City Hospital, Building A"
+            }
+        }
+
+
+class TriggerDetectionResult(BaseModel):
+    """Result of trigger detection."""
+    triggered: bool
+    confidence: float
+    detected_words: List[str]
+    input_text: str
+    timestamp: str
+
+
+class EmergencyMedicalInfo(BaseModel):
+    """Emergency medical information (read-only)."""
+    patient_id: str
+    name: str
+    age: Optional[int] = None
+    blood_group: str
+    emergency_contact: str
+    phone: str
+    allergies: List[dict] = []
+    conditions: List[dict] = []
+    medications: List[dict] = []
+    latest_vitals: dict = {}
+    access_type: str  # Always "EMERGENCY_READ_ONLY"
+    access_granted_at: str
+    note: str  # Warning about read-only access
+
+
+class EmergencyTriggerResponse(BaseModel):
+    """Complete response for emergency trigger."""
+    detected: bool
+    detection_details: TriggerDetectionResult
+    medical_info: Optional[EmergencyMedicalInfo] = None
+    message: str

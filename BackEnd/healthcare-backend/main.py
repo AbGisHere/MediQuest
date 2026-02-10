@@ -5,7 +5,7 @@ DigiLocker-style Universal Healthcare Backend.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings  
-from app.routers import auth, patients, vitals, consent, emergency, health_profile
+from app.routers import auth, patients, vitals, consent, emergency, health_profile, device_ingest, notes, blood_reports, emergency_trigger
 
 # Import database to ensure models are registered
 from app.database import Base, engine
@@ -38,6 +38,10 @@ app.include_router(vitals.router)
 app.include_router(consent.router)
 app.include_router(emergency.router)
 app.include_router(health_profile.router)
+app.include_router(device_ingest.router)  # Fault-tolerant device data ingestion
+app.include_router(notes.router)  # Clinical notes with role-based encryption
+app.include_router(blood_reports.router)  # PDF blood report parsing
+app.include_router(emergency_trigger.router)  # Emergency trigger word detection
 
 # Health check endpoint
 @app.get("/health")
@@ -57,7 +61,10 @@ async def health_check():
             "emergency_access": True,
             "device_integration": True,
             "audit_logging": True,
-            "dpdp_compliant": True
+            "dpdp_compliant": True,
+            "encrypted_notes": True,
+            "pdf_blood_reports": True,
+            "emergency_trigger_detection": True
         }
     }
 

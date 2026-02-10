@@ -12,8 +12,13 @@ const ReportsPage: React.FC = () => {
     const fetchReports = async () => {
       try {
         setLoading(true);
-        // For now, simulate reports data
-        const vitalsData = await apiService.getPatientVitals('aa7e877b-10cd-442b-bd38-b622cecb9629', undefined, 50);
+        
+        // Get patients first, then fetch vitals for first patient
+        const patients = await apiService.getPatientsWithConsent(0, 10);
+        
+        if (patients.length > 0) {
+          const vitalsData = await apiService.getPatientVitals(patients[0].id, undefined, 50);
+        }
         
         // Generate sample reports
         const sampleReports = [
@@ -43,6 +48,16 @@ const ReportsPage: React.FC = () => {
         setReports(sampleReports);
       } catch (error) {
         console.error('Error fetching reports:', error);
+        // Set default reports on error
+        setReports([
+          {
+            id: '1',
+            type: 'System Report',
+            description: 'System health and status',
+            date: new Date().toISOString(),
+            status: 'completed'
+          }
+        ]);
       } finally {
         setLoading(false);
       }

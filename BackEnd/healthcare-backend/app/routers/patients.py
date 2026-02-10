@@ -1,18 +1,18 @@
 """
 Patients router.
-Handles patient registration, retrieval, biometric verification.
+Handles patient registration, retrieval, biometric verification (fingerprint + face).
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
 from app.models.user import User
-from app.models.patient import Patient, BiometricHash
+from app.models.patient import Patient, BiometricHash, BiometricType
 from app.models.audit import AuditAction
 from app.models.consent import ConsentPurpose
 from app.schemas import PatientRegister, PatientResponse, BiometricVerify
 from app.auth.dependencies import get_current_user, require_doctor, require_admin
-from app.services.biometric import hash_fingerprint, verify_fingerprint
+from app.services.biometric import hash_fingerprint, hash_face, verify_fingerprint, verify_face
 from app.services.audit import AuditService
 from app.services.consent import ConsentService
 
@@ -28,21 +28,52 @@ async def register_patient(
 ):
     """
     Register a new patient with biometric identity.
+    Supports both fingerprint and face biometrics (both OPTIONAL).
+    At least one biometric should be provided for identity verification.
     Only doctors and admins can register patients.
     """
-    # Hash fingerprint
-    fingerprint_hash = hash_fingerprint(patient_data.fingerprint_data)
-    
-    # Check if fingerprint already exists (one fingerprint = one patient)
-    existing_biometric = db.query(BiometricHash).filter(
-        BiometricHash.fingerprint_hash == fingerprint_hash
-    ).first()
-    
-    if existing_biometric:
+    # Validate: at least one biometric provided
+    if not patient_data.fingerprint_data and not patient_data.face_data:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This fingerprint is already registered"
+            detail="At least one biometric (fingerprint or face) must be provided"
         )
+    
+    # Process fingerprint if provided
+    if patient_data.fingerprint_data:
+        fingerprint_hash = hash_fingerprint(patient_data.fingerprint_data)
+        
+        # Check if fingerprint already exists
+        existing_fingerprint = db.query(BiometricHash).filter(
+            BiometricHash.biometric_hash == fingerprint_hash,
+            BiometricHash.biometric_type == BiometricType.FINGERPRINT.value
+        ).first()
+        
+        if existing_fingerprint:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This fingerprint is already registered"
+            )
+    else:
+        fingerprint_hash = None
+    
+    # Process face if provided
+    if patient_data.face_data:
+        face_hash = hash_face(patient_data.face_data)
+        
+        # Check if face already exists
+        existing_face = db.query(BiometricHash).filter(
+            BiometricHash.biometric_hash == face_hash,
+            BiometricHash.biometric_type == BiometricType.FACE.value
+        ).first()
+        
+        if existing_face:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This face is already registered"
+            )
+    else:
+        face_hash = None
     
     # Create patient with global UID (auto-generated UUID)
     patient = Patient(
@@ -68,14 +99,27 @@ async def register_patient(
     db.add(patient)
     db.flush()  # Get patient.id
     
-    # Store biometric hash
-    biometric = BiometricHash(
-        patient_id=patient.id,
-        fingerprint_hash=fingerprint_hash,
-        hash_algorithm="SHA256"
-    )
+    # Store fingerprint biometric hash if provided
+    if fingerprint_hash:
+        fingerprint_bio = BiometricHash(
+            patient_id=patient.id,
+            biometric_type=BiometricType.FINGERPRINT.value,
+            biometric_hash=fingerprint_hash,
+            hash_algorithm="HMAC-SHA256",
+            is_active=True
+        )
+        db.add(fingerprint_bio)
     
-    db.add(biometric)
+    # Store face biometric hash if provided
+    if face_hash:
+        face_bio = BiometricHash(
+            patient_id=patient.id,
+            biometric_type=BiometricType.FACE.value,
+            biometric_hash=face_hash,
+            hash_algorithm="HMAC-SHA256",
+            is_active=True
+        )
+        db.add(face_bio)
     
     # Auto-grant default treatment consent
     ConsentService.grant_consent(
@@ -90,13 +134,19 @@ async def register_patient(
     db.refresh(patient)
     
     # Audit log
+    biometric_types = []
+    if fingerprint_hash:
+        biometric_types.append("fingerprint")
+    if face_hash:
+        biometric_types.append("face")
+    
     AuditService.log(
         db=db,
         action=AuditAction.PATIENT_REGISTERED,
         actor=current_user,
         resource_type="patient",
         resource_id=patient.id,
-        description=f"Patient registered: {patient.first_name} {patient.last_name}",
+        description=f"Patient registered: {patient.first_name} {patient.last_name} with biometrics: {', '.join(biometric_types)}",
         ip_address=request.client.host if request.client else None
     )
     
@@ -170,25 +220,51 @@ async def verify_biometric(
     db: Session = Depends(get_db)
 ):
     """
-    Verify fingerprint and return patient ID.
+    Verify fingerprint or face and return patient ID.
+    Supports both fingerprint and face verification.
+    At least one biometric must be provided.
     Used for patient lookup and identity verification.
     """
-    # Hash provided fingerprint
-    fingerprint_hash = hash_fingerprint(verify_data.fingerprint_data)
+    patient_id = None
+    verified_type = None
     
-    # Find matching biometric record
-    biometric = db.query(BiometricHash).filter(
-        BiometricHash.fingerprint_hash == fingerprint_hash
-    ).first()
+    # Try fingerprint verification if provided
+    if verify_data.fingerprint_data:
+        fingerprint_hash = hash_fingerprint(verify_data.fingerprint_data)
+        
+        biometric = db.query(BiometricHash).filter(
+            BiometricHash.biometric_hash == fingerprint_hash,
+            BiometricHash.biometric_type == BiometricType.FINGERPRINT.value,
+            BiometricHash.is_active == True
+        ).first()
+        
+        if biometric:
+            patient_id = biometric.patient_id
+            verified_type = "fingerprint"
     
-    if not biometric:
+    # Try face verification if provided and fingerprint didn't match
+    if not patient_id and verify_data.face_data:
+        face_hash = hash_face(verify_data.face_data)
+        
+        biometric = db.query(BiometricHash).filter(
+            BiometricHash.biometric_hash == face_hash,
+            BiometricHash.biometric_type == BiometricType.FACE.value,
+            BiometricHash.is_active == True
+        ).first()
+        
+        if biometric:
+            patient_id = biometric.patient_id
+            verified_type = "face"
+    
+    # No matching biometric found
+    if not patient_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No patient found with this fingerprint"
+            detail="No patient found with the provided biometric(s)"
         )
     
     # Get patient
-    patient = db.query(Patient).filter(Patient.id == biometric.patient_id).first()
+    patient = db.query(Patient).filter(Patient.id == patient_id).first()
     
     if not patient or not patient.is_active:
         raise HTTPException(
@@ -199,7 +275,8 @@ async def verify_biometric(
     return {
         "verified": True,
         "patient_id": patient.id,
-        "patient_name": f"{patient.first_name} {patient.last_name}"
+        "patient_name": f"{patient.first_name} {patient.last_name}",
+        "verified_via": verified_type
     }
 
 
@@ -250,18 +327,16 @@ async def list_patients(
 ):
     """
     List all patients (doctors and admins only).
-    If with_consent=True, only return patients the doctor has consent for.
+    If with_consent=True, only return patients for whom the current doctor has consent.
     """
     if with_consent and current_user.role.value == "doctor":
-        # Get only patients this doctor has consent for
-        from app.models.consent import Consent
-        from app.services.consent import ConsentService
+        # Get patients for whom this doctor has consent
+        from app.models.consent import Consent, ConsentPurpose
         
-        # Get all patient IDs the doctor has consent for
         consents = db.query(Consent).filter(
             Consent.granted_to == current_user.id,
             Consent.granted == True,
-            Consent.purpose == "treatment"
+            Consent.purpose == ConsentPurpose.TREATMENT
         ).all()
         
         patient_ids = [consent.patient_id for consent in consents]
@@ -271,6 +346,7 @@ async def list_patients(
             Patient.is_active == True
         ).offset(skip).limit(limit).all()
     else:
+        # Return all patients (for admins or when consent filtering is not requested)
         patients = db.query(Patient).filter(
             Patient.is_active == True
         ).offset(skip).limit(limit).all()

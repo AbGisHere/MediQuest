@@ -161,32 +161,6 @@ async def emergency_access_data(
     }
 
 
-@router.get("/active")
-async def get_active_emergency_access(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Get all active emergency access records.
-    """
-    active_accesses = db.query(EmergencyAccess).filter(
-        EmergencyAccess.is_active == True
-    ).all()
-    
-    return [
-        {
-            "id": access.id,
-            "patient_id": access.patient_id,
-            "triggered_by": access.triggered_by,
-            "trigger_reason": access.trigger_reason,
-            "granted_at": access.granted_at,
-            "expires_at": access.expires_at,
-            "access_count": access.access_count
-        }
-        for access in active_accesses
-    ]
-
-
 @router.post("/terminate/{emergency_access_id}")
 async def terminate_emergency_access(
     emergency_access_id: str,
@@ -239,3 +213,30 @@ async def terminate_emergency_access(
         "emergency_access_id": emergency_access_id,
         "terminated_at": emergency_access.terminated_at
     }
+
+
+@router.get("/active")
+async def get_active_emergency_overrides(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all active emergency overrides.
+    """
+    from app.models.emergency import EmergencyAccess
+    
+    active_overrides = db.query(EmergencyAccess).filter(
+        EmergencyAccess.is_active == True
+    ).all()
+    
+    return [
+        {
+            "id": override.id,
+            "patient_id": override.patient_id,
+            "requested_by": override.requested_by,
+            "trigger_reason": override.trigger_reason,
+            "created_at": override.created_at.isoformat(),
+            "expires_at": override.expires_at.isoformat()
+        }
+        for override in active_overrides
+    ]
