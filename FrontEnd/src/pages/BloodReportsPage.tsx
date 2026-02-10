@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Download, Eye, CheckCircle, Plus, AlertTriangle } from 'lucide-react';
+import { FileText, Download, Eye, CheckCircle, Plus, AlertTriangle, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import apiService from '../services/api';
 
@@ -79,6 +79,13 @@ const BloodReportsPage: React.FC = () => {
   const [showReportDetail, setShowReportDetail] = useState(false);
   const [detailedReport, setDetailedReport] = useState<BloodReport | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadForm, setUploadForm] = useState({
+    testDate: '',
+    labName: ''
+  });
 
   useEffect(() => {
     const fetchPatients = async () => {
@@ -200,40 +207,61 @@ const BloodReportsPage: React.FC = () => {
     }
 
     return (
-      <div className="mb-6">
+      <div className="bg-gray-50 rounded-lg p-4">
         <h4 className="text-sm font-semibold text-gray-700 mb-3">{title}</h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {availableTests.map((test, index) => {
-            const status = test.value ? getNormalRange(test.name, test.value) : { status: 'normal', color: 'text-green-600' };
-            const Icon = getStatusIcon(status.status);
-
-            return (
-              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{test.name}</p>
-                  <p className="text-lg font-semibold text-gray-700">{formatValue(test.value, test.unit)}</p>
-                </div>
-                {test.value && (
-                  <div className={`flex items-center ${status.color}`}>
-                    <Icon className="h-4 w-4 mr-1" />
-                    <span className="text-xs font-medium">{status.status}</span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {availableTests.map((test, index) => (
+            <div key={index} className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">{test.name}</span>
+              <span className="text-sm font-medium text-gray-900">
+                {formatValue(test.value, test.unit)}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     );
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
-    );
-  }
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setUploadFile(file);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!uploadFile || !selectedPatient) {
+      alert('Please select a file and patient');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      await apiService.uploadBloodReport(
+        selectedPatient,
+        uploadFile,
+        uploadForm.testDate || undefined,
+        uploadForm.labName || undefined
+      );
+      
+      // Refresh reports list
+      const reportsData = await apiService.getPatientBloodReports(selectedPatient);
+      setReports(reportsData);
+      
+      // Reset form
+      setUploadFile(null);
+      setUploadForm({ testDate: '', labName: '' });
+      setShowUploadModal(false);
+      
+      alert('Report uploaded successfully!');
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Failed to upload report. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -245,7 +273,10 @@ const BloodReportsPage: React.FC = () => {
         </div>
         <div className="flex space-x-3">
           {user?.role === 'admin' && (
-            <button className="btn btn-primary">
+            <button 
+              onClick={() => setShowUploadModal(true)}
+              className="btn btn-primary"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Upload Report
             </button>
@@ -514,6 +545,93 @@ const BloodReportsPage: React.FC = () => {
                   )}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Report Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Upload Blood Report</h3>
+              <button
+                onClick={() => setShowUploadModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Select Patient</label>
+                <select
+                  value={selectedPatient}
+                  onChange={(e) => setSelectedPatient(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                >
+                  <option value="">Select a patient</option>
+                  {patients.map((patient) => (
+                    <option key={patient.id} value={patient.id}>
+                      {patient.first_name} {patient.last_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Test Date (Optional)</label>
+                <input
+                  type="date"
+                  value={uploadForm.testDate}
+                  onChange={(e) => setUploadForm({ ...uploadForm, testDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Lab Name (Optional)</label>
+                <input
+                  type="text"
+                  value={uploadForm.labName}
+                  onChange={(e) => setUploadForm({ ...uploadForm, labName: e.target.value })}
+                  placeholder="Enter lab name"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Select File</label>
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={handleFileSelect}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                />
+                {uploadFile && (
+                  <p className="mt-2 text-sm text-gray-600">
+                    Selected: {uploadFile.name}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex space-x-3 pt-4">
+              <button
+                onClick={() => setShowUploadModal(false)}
+                className="flex-1 btn btn-outline"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpload}
+                disabled={uploading || !uploadFile || !selectedPatient}
+                className="flex-1 btn btn-primary"
+              >
+                {uploading ? 'Uploading...' : 'Upload Report'}
+              </button>
             </div>
           </div>
         </div>
