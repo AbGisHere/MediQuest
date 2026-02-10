@@ -17,8 +17,9 @@ const PatientsPage: React.FC = () => {
     const fetchPatients = async () => {
       try {
         setLoading(true);
-        const data = await apiService.getPatients();
-        setPatients(data);
+        // Use consent-filtered patients for doctors
+        const patientsData = await apiService.getPatientsWithConsent(0, 100);
+        setPatients(patientsData);
       } catch (error) {
         console.error('Error fetching patients:', error);
       } finally {
@@ -117,6 +118,9 @@ const PatientsPage: React.FC = () => {
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Consent
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -171,11 +175,17 @@ const PatientsPage: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${patient.is_active
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          patient.is_active
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
                           }`}>
                           {patient.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                          Granted
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">

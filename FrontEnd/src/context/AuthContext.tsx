@@ -86,30 +86,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const token = localStorage.getItem('access_token');
       if (token) {
         try {
-          // Validate token by making a health check or user info request
-          const response = await apiService.healthCheck();
-          if (response.status === 'healthy') {
-            // Token is valid, but we need user info
-            // For now, we'll set a minimal user state
-            // In a real app, you'd have an endpoint to get current user info
-            dispatch({
-              type: 'AUTH_SUCCESS',
-              payload: {
-                user: {
-                  id: 'temp',
-                  username: 'user',
-                  email: 'user@example.com',
-                  role: 'patient',
-                  is_active: true,
-                  created_at: new Date().toISOString(),
-                },
-                token,
+          // Get real user info from backend
+          const userInfo = await apiService.getCurrentUser();
+          dispatch({
+            type: 'AUTH_SUCCESS',
+            payload: {
+              user: {
+                id: userInfo.id,
+                username: userInfo.username,
+                email: userInfo.email,
+                role: userInfo.role as 'admin' | 'doctor' | 'patient',
+                is_active: userInfo.is_active,
+                created_at: userInfo.created_at,
               },
-            });
-          } else {
-            dispatch({ type: 'AUTH_FAILURE' });
-          }
-        } catch {
+              token,
+            },
+          });
+        } catch (error) {
+          console.error('Failed to get user info:', error);
           dispatch({ type: 'AUTH_FAILURE' });
         }
       } else {

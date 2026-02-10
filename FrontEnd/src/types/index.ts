@@ -152,7 +152,8 @@ export interface Alert {
   vital_id?: string;
   alert_type: string;
   severity: string;
-  message: string;
+  title: string;
+  description: string;
   is_active: boolean;
   created_at: string;
   resolved_at?: string;

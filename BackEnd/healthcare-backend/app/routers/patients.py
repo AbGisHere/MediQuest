@@ -244,14 +244,35 @@ async def delete_patient(
 async def list_patients(
     skip: int = 0,
     limit: int = 100,
+    with_consent: bool = False,
     current_user: User = Depends(require_doctor),
     db: Session = Depends(get_db)
 ):
     """
     List all patients (doctors and admins only).
+    If with_consent=True, only return patients the doctor has consent for.
     """
-    patients = db.query(Patient).filter(
-        Patient.is_active == True
-    ).offset(skip).limit(limit).all()
+    if with_consent and current_user.role.value == "doctor":
+        # Get only patients this doctor has consent for
+        from app.models.consent import Consent
+        from app.services.consent import ConsentService
+        
+        # Get all patient IDs the doctor has consent for
+        consents = db.query(Consent).filter(
+            Consent.granted_to == current_user.id,
+            Consent.granted == True,
+            Consent.purpose == "treatment"
+        ).all()
+        
+        patient_ids = [consent.patient_id for consent in consents]
+        
+        patients = db.query(Patient).filter(
+            Patient.id.in_(patient_ids),
+            Patient.is_active == True
+        ).offset(skip).limit(limit).all()
+    else:
+        patients = db.query(Patient).filter(
+            Patient.is_active == True
+        ).offset(skip).limit(limit).all()
     
     return patients

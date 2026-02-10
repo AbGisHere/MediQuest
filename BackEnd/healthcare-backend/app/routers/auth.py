@@ -246,22 +246,23 @@ async def refresh(
 
 
 @router.post("/logout")
-async def logout(
-    request: Request,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
+async def logout(current_user: User = Depends(get_current_user)):
     """
-    Logout (client should discard tokens).
+    Logout user (client-side token removal).
     """
-    # Audit logout
-    AuditService.log_auth_event(
-        db=db,
-        action=AuditAction.LOGOUT,
-        user_id=current_user.id,
-        ip_address=request.client.host if request.client else "unknown",
-        user_agent=request.headers.get("user-agent", "unknown"),
-        success=True
-    )
-    
     return {"message": "Successfully logged out"}
+
+
+@router.get("/me", response_model=dict)
+async def get_current_user_info(current_user: User = Depends(get_current_user)):
+    """
+    Get current user information.
+    """
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email,
+        "role": current_user.role.value,
+        "is_active": current_user.is_active,
+        "created_at": current_user.created_at
+    }

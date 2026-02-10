@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Patient Access</title>
+</head>
+<body>
+    <h2>Test Patient Details Access</h2>
+    <p>Use these credentials to test:</p>
+    <ul>
+        <li><strong>Doctor:</strong> dr_smith / Doctor@123</li>
+        <li><strong>Patient with consent:</strong> aa7e877b-10cd-442b-bd38-b622cecb9629 (Timothy Thomas)</li>
+    </ul>
+    
+    <h3>API Test</h3>
+    <button onclick="testPatientAccess()">Test Patient Access</button>
+    <div id="result"></div>
+
+    <script>
+        async function testPatientAccess() {
+            try {
+                // Login
+                const loginResponse = await fetch('http://localhost:8000/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: 'dr_smith', password: 'Doctor@123' })
+                });
+                const loginData = await loginResponse.json();
+                
+                if (loginData.access_token) {
+                    // Get patient details
+                    const patientResponse = await fetch('http://localhost:8000/patients/aa7e877b-10cd-442b-bd38-b622cecb9629', {
+                        headers: { 
+                            'Authorization': `Bearer ${loginData.access_token}`,
+                            'Content-Type': 'application/json' 
+                        }
+                    });
+                    const patientData = await patientResponse.json();
+                    
+                    document.getElementById('result').innerHTML = `
+                        <h4>Result:</h4>
+                        <pre>${JSON.stringify(patientData, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

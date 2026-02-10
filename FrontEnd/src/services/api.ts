@@ -123,6 +123,13 @@ class ApiService {
     return response.data;
   }
 
+  async getPatientsWithConsent(page = 0, limit = 100) {
+    const response = await this.api.get(API_ENDPOINTS.PATIENTS.LIST, {
+      params: { skip: page * limit, limit, with_consent: true }
+    });
+    return response.data;
+  }
+
   async getPatient(patientId: string) {
     const response = await this.api.get(API_ENDPOINTS.PATIENTS.DETAIL(patientId));
     return response.data;
@@ -134,8 +141,8 @@ class ApiService {
   }
 
   async getPatientAlerts(patientId: string) {
-    const response = await this.api.get(`/patients/${patientId}/alerts`);
-    return response.data;
+    const response = await this.api.get(API_ENDPOINTS.HEALTH_PROFILE.DETAIL(patientId));
+    return response.data.recent_alerts || [];
   }
 
   async registerPatient(data: any) {
@@ -255,7 +262,13 @@ class ApiService {
 
   // System health check
   async healthCheck() {
-    const response = await this.api.get(API_ENDPOINTS.HEALTH);
+    const response = await this.api.get(API_ENDPOINTS.SYSTEM.HEALTH);
+    return response.data;
+  }
+
+  // Get current user info
+  async getCurrentUser() {
+    const response = await this.api.get('/auth/me');
     return response.data;
   }
 

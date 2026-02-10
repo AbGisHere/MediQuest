@@ -12,6 +12,7 @@ const PatientDetailsPage: React.FC = () => {
   const [patient, setPatient] = useState<Patient | null>(null);
   const [vitals, setVitals] = useState<Vital[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,8 +32,16 @@ const PatientDetailsPage: React.FC = () => {
         // Fetch patient alerts
         const alertsData = await apiService.getPatientAlerts(patientId);
         setAlerts(alertsData);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching patient details:', error);
+        if (error?.response?.status === 403) {
+          // Handle consent error specifically
+          setError('Access denied: You do not have consent to view this patient\'s details.');
+        } else if (error?.response?.status === 404) {
+          setError('Patient not found.');
+        } else {
+          setError('Failed to load patient details.');
+        }
       } finally {
         setLoading(false);
       }
@@ -52,8 +61,12 @@ const PatientDetailsPage: React.FC = () => {
   if (!patient) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-2xl font-bold text-gray-900">Patient Not Found</h2>
-        <p className="mt-2 text-gray-600">The patient you're looking for doesn't exist.</p>
+        <h2 className="text-2xl font-bold text-gray-900">
+          {error || "Patient Not Found"}
+        </h2>
+        <p className="mt-2 text-gray-600">
+          {error || "The patient you're looking for doesn't exist."}
+        </p>
         <button
           onClick={() => navigate('/patients')}
           className="mt-4 btn btn-primary"
@@ -226,8 +239,8 @@ const PatientDetailsPage: React.FC = () => {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{alert.alert_type}</p>
-                    <p className="text-xs text-gray-500">{alert.message}</p>
+                    <p className="text-sm font-medium text-gray-900">{alert.title}</p>
+                    <p className="text-xs text-gray-500">{alert.description || 'No description available'}</p>
                   </div>
                   <span
                     className={`px-2 py-1 text-xs font-medium rounded ${

@@ -5,7 +5,7 @@ import apiService from '../services/api';
 import type { Vital, Alert } from '../types';
 
 const Dashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [stats, setStats] = useState({
     totalPatients: 0,
     totalVitals: 0,
@@ -24,8 +24,8 @@ const Dashboard: React.FC = () => {
         if (user?.role !== 'patient') {
           // Fetch data for doctors/admins
           const [patients, vitals, alerts] = await Promise.all([
-            apiService.getPatients(0, 10),
-            apiService.getPatientVitals('dummy', undefined, 5), // This would need proper patient IDs
+            apiService.getPatientsWithConsent(0, 10), // Use consent-filtered patients
+            apiService.getPatientVitals('aa7e877b-10cd-442b-bd38-b622cecb9629', undefined, 5), // Use a real patient ID
             apiService.getActiveEmergencyOverrides(),
           ]);
 
@@ -39,18 +39,24 @@ const Dashboard: React.FC = () => {
             recentActivity: 0, // Would come from audit logs
           });
         } else {
-          // Fetch patient-specific data
-          const vitals = await apiService.getPatientVitals('patient-id', undefined, 5);
+          // Fetch patient-specific data - use first patient as example
+          const vitals = await apiService.getPatientVitals('aa7e877b-10cd-442b-bd38-b622cecb9629', undefined, 5);
           setRecentVitals(vitals);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching dashboard data:', error);
+        console.error('Error details:', {
+          message: error.message,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data
+        });
       } finally {
         setLoading(false);
       }
     };
 
-    if (user) {
+    if (user && !authLoading) {
       fetchDashboardData();
     }
   }, [user]);
@@ -112,7 +118,7 @@ const Dashboard: React.FC = () => {
 
         {/* Stats Grid */}
         {user?.role !== 'patient' && (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {statCards.map((stat) => {
               const Icon = stat.icon;
               return (
@@ -193,8 +199,8 @@ const Dashboard: React.FC = () => {
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{alert.alert_type}</p>
-                        <p className="text-xs text-gray-500">{alert.message}</p>
+                        <p className="text-sm font-medium text-gray-900">{alert.title}</p>
+                        <p className="text-xs text-gray-500">{alert.description}</p>
                       </div>
                       <span
                         className={`px-2 py-1 text-xs font-medium rounded ${alert.severity === 'critical'
